@@ -77,55 +77,145 @@ INSERT INTO course_reviews (course_id, student_id, rating, review_text) VALUES
 (4, 4, 4, 'Clear and practical'),
 (5, 5, 5, 'Perfect course for beginners!');
 
--- Get all students enrolled in "Advanced SQL"
-select  s.name
-from student s
-join enrollments e on s.student_id = e.student_id
-join courses c on c.course_id = e.course_id
-where c.title = 'Advanced SQL';
+-- ✅ Get all students enrolled in "Advanced SQL"
+SELECT s.name
+FROM student s                  -- Start from student table
+JOIN enrollments e              -- Join with enrollments table
+  ON s.student_id = e.student_id   -- Match student_id
+JOIN courses c                  -- Join with courses table
+  ON c.course_id = e.course_id     -- Match course_id
+WHERE c.title = 'Advanced SQL';    -- Only where course title is "Advanced SQL"
 
--- Count number of students in each course
-select c.title , count(e.student_id) as c_stud
-from courses c
-join enrollments e on c.course_id = e.course_id
-group by c.course_id;  
+-- 🎯 OUTPUT: Returns name of students enrolled in "Advanced SQL"
+-- +-------+
+-- | name  |
+-- +-------+
+-- | Priya |
+-- +-------+
 
--- Average rating per course
-select c.title , avg(r.rating) as c_stud
-from courses c
-join course_reviews r on r.course_id = c.course_id
-group by c.title;
 
--- Students who have not enrolled in any course
- select name from student
- where student_id not in (
- select student_id from enrollments
- );
- 
--- Courses and the names of instructors teaching them
- select c.title,i.name
- from courses c
- join instructors i on c.instructor_id  = i.instructor_id ;
 
--- Top-rated course (learnt useage of limit here)
+-- ✅ Count number of students in each course
+SELECT c.title, COUNT(e.student_id) AS c_stud
+FROM courses c
+JOIN enrollments e 
+  ON c.course_id = e.course_id      -- Join enrollments to courses
+GROUP BY c.course_id;               -- Group by course_id to count students
+
+-- 🎯 OUTPUT: Title of each course with number of students
+-- +---------------------+--------+
+-- | title               | c_stud |
+-- +---------------------+--------+
+-- | Intro to Python     |   1    |
+-- | Advanced SQL        |   1    |
+-- | Data Science Basics |   1    |
+-- | Core Java           |   1    |
+-- | Web Development     |   1    |
+-- +---------------------+--------+
+
+
+
+-- ✅ Average rating per course
+SELECT c.title, AVG(r.rating) AS avg_rating
+FROM courses c
+JOIN course_reviews r 
+  ON r.course_id = c.course_id      -- Join reviews to courses
+GROUP BY c.title;                   -- Group by course to calculate average
+
+-- 🎯 OUTPUT: Average rating given to each course
+-- +---------------------+-------------+
+-- | title               | avg_rating  |
+-- +---------------------+-------------+
+-- | Intro to Python     |     5.0     |
+-- | Advanced SQL        |     4.0     |
+-- | Data Science Basics |     3.0     |
+-- | Core Java           |     4.0     |
+-- | Web Development     |     5.0     |
+-- +---------------------+-------------+
+
+
+
+-- ✅ Students who have not enrolled in any course
+SELECT name 
+FROM student
+WHERE student_id NOT IN (
+  SELECT student_id FROM enrollments   -- Get all enrolled student_ids
+);
+
+-- 🎯 OUTPUT: Students who are not in the enrollments table
+-- Result: ❌ No rows returned (all students enrolled)
+
+
+
+-- ✅ Courses and the names of instructors teaching them
+SELECT c.title, i.name
+FROM courses c
+JOIN instructors i 
+  ON c.instructor_id = i.instructor_id;  -- Match courses with instructors
+
+-- 🎯 OUTPUT: Shows course title with instructor name
+-- +---------------------+-----------------+
+-- | title               | name            |
+-- +---------------------+-----------------+
+-- | Intro to Python     | Dr. Ramanujam   |
+-- | Advanced SQL        | Prof. Meenakshi |
+-- | Data Science Basics | Dr. Ilango      |
+-- | Core Java           | Ms. Anitha      |
+-- | Web Development     | Mr. Selvam      |
+-- +---------------------+-----------------+
+
+
+
+-- ✅ Top-rated course
 SELECT c.title
 FROM courses c
-JOIN course_reviews r ON c.course_id = r.course_id
-GROUP BY c.title 
-Limit 1;
+JOIN course_reviews r 
+  ON c.course_id = r.course_id
+GROUP BY c.title
+ORDER BY AVG(r.rating) DESC   -- Order by average rating (high to low)
+LIMIT 1;                      -- Return top 1 row only
 
--- Use of ROW_NUMBER() to rank students by age
-select name,age,
-row_number() over(order by age desc) as rank_As
-from student;
+-- 🎯 OUTPUT: Course with highest average rating
+-- Result: Either "Intro to Python" or "Web Development" (both have 5.0)
 
--- CTE to list students and their total enrollments
-with top as(
-select student_id, count(*) as list
-from enrollments
-group by student_id
+
+
+-- ✅ Use of ROW_NUMBER() to rank students by age
+SELECT name, age,
+ROW_NUMBER() OVER (ORDER BY age DESC) AS rank_As
+FROM student;
+
+-- 🎯 OUTPUT: Assigns a rank to students based on descending age
+-- +---------+-----+---------+
+-- | name    | age | rank_As |
+-- +---------+-----+---------+
+-- | Vignesh |  25 |    1    |
+-- | Priya   |  24 |    2    |
+-- | Divya   |  23 |    3    |
+-- | Arun    |  22 |    4    |
+-- | Karthik |  21 |    5    |
+-- +---------+-----+---------+
+
+
+
+-- ✅ CTE to list students and their total enrollments
+WITH top AS (                      -- Step 1: Create a temporary result (CTE)
+  SELECT student_id, COUNT(*) AS list   -- Count how many enrollments per student
+  FROM enrollments
+  GROUP BY student_id
 )
-select s.name,t.list
-from student s
-join top t on s.student_id = t.student_id;
+SELECT s.name, t.list             -- Step 2: Use the CTE result
+FROM student s
+JOIN top t 
+  ON s.student_id = t.student_id;
 
+-- 🎯 OUTPUT: Student name with number of courses enrolled
+-- +---------+------+
+-- | name    | list |
+-- +---------+------+
+-- | Arun    |  1   |
+-- | Priya   |  1   |
+-- | Karthik |  1   |
+-- | Divya   |  1   |
+-- | Vignesh |  1   |
+-- +---------+------+
