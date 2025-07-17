@@ -1,0 +1,140 @@
+SQL Challenge: Group Tasks by Consecutive End Dates
+
+Problem:
+
+You are given a list of tasks with start_date and end_date. Tasks with consecutive end dates are part of the same project.
+
+You need to group such tasks into projects and return:
+
+The start and end date of each project
+
+Ordered by project duration (ascending) and then start date
+
+Simplified Input (Table: projects)
+
+start_date	end_date
+
+2015-10-01	2015-10-02
+2015-10-02	2015-10-03
+2015-10-12	2015-10-13
+2015-10-16	2015-10-16
+2015-10-26	2015-10-27
+2015-10-27	2015-10-28
+
+Expected Output
+
+Start_Date	End_Date
+
+2015-10-16	2015-10-16
+2015-10-12	2015-10-13
+2015-10-01	2015-10-03
+2015-10-26	2015-10-28
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+
+query:
+
+with t1 as( 
+        
+select start_date, end_date,
+ 
+ row_number() over (order by end_date) as rn from projects)
+
+select sd, ed from
+ 
+ ( select min(start_date) as sd, max(end_date) as ed, count(*) as cnt from
+
+                ( select  end_date, date_sub(end_date, interval rn day) as flag_date from t1) a 
+
+group by flag_date ) b
+
+ order by cnt, sd
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+What is DATE_SUB(end_date, INTERVAL rn DAY) doing?
+
+This expression creates a common flag (flag_date) for all consecutive rows by aligning each end_date back by its row number.
+
+So tasks with consecutive end dates will share the same flag_date, allowing them to be grouped.
+
+Grouping Logic Visually:
+
+Row	end_date	rn	flag_date
+
+1	2015-10-02	1	2015-10-01
+2	2015-10-03	2	2015-10-01 ✅
+3	2015-10-13	3	2015-10-10
+4	2015-10-16	4	2015-10-12
+5	2015-10-27	5	2015-10-22
+6	2015-10-28	6	2015-10-22 ✅
+
+→ Rows with the same flag_date get grouped together.
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+Query Execution Logic:
+
+Step 1: Assign Row Numbers by end_date:
+
+
+with t1 as( 
+        
+select start_date, end_date,
+ 
+ row_number() over (order by end_date) as rn from projects)
+
+
+row_number | start_date | end_date
+-----------|------------|----------
+1          | 2015-10-02 | 2015-10-02
+2          | 2015-10-03 | 2015-10-03
+3          | 2015-10-04 | 2015-10-04
+4          | 2015-10-06 | 2015-10-06
+5          | 2015-10-07 | 2015-10-07
+6          | 2015-10-10 | 2015-10-10
+
+
+Step 2: Calculate flag_date = end_date - rn
+
+ ( select end_date, date_sub(end_date, interval rn day) as flag_date from t1) a 
+
+
+
+
+end_date    | rn | flag_date
+------------|----|-------------
+2015-10-02  | 1  | 2015-10-01
+2015-10-03  | 2  | 2015-10-01
+2015-10-04  | 3  | 2015-10-01
+2015-10-06  | 4  | 2015-10-02
+2015-10-07  | 5  | 2015-10-02
+2015-10-10  | 6  | 2015-10-04
+
+Step 3: Group by flag_date → Form groups  -----------------------------group by flag_date ) b 
+
+flag_date   | MIN(start_date) | MAX(end_date) | COUNT(*)
+------------|------------------|---------------|---------
+2015-10-01  | 2015-10-02       | 2015-10-04    | 3
+2015-10-02  | 2015-10-06       | 2015-10-07    | 2
+2015-10-04  | 2015-10-10       | 2015-10-10    | 1
+
+Step 4: Order by count, then start_date:
+
+ ( select min(start_date) as sd, max(end_date) as ed, count(*) as cnt from
+
+Output:
+
+start_date  | end_date
+------------|-----------
+2015-10-10  | 2015-10-10   ← 1 task
+2015-10-06  | 2015-10-07   ← 2 tasks
+2015-10-02  | 2015-10-04   ← 3 tasks
+
+
+Final Output:
+
+2015-10-10 2015-10-10
+2015-10-06 2015-10-07
+2015-10-02 2015-10-04
